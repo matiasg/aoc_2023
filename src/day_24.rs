@@ -107,20 +107,19 @@ fn det(p1: &Vect, p2: &Vect, p3: &Vect) -> Rational {
 }
 
 fn sqrt(q: &Rational) -> Rational {
-    let ret = Float::with_val(128, q).sqrt().to_rational().unwrap();
+    let (num, den) = (q.numer(), q.denom());
+    let ret = Rational::from((num.clone().sqrt(), den.clone().sqrt()));
     assert_eq!(ret.clone() * ret.clone(), *q);
     ret
 }
 
 fn solve_quadratic(a: Rational, b: Rational, c: Rational) -> Vec<Rational> {
     assert!((a != 0.0) | (b != 0.0));
-    println!("  solving {}x^2 + {}x + {} = 0", a, b, c);
     let mut ret: Vec<Rational> = Vec::new();
     if a == 0.0 {
         ret.push(-c / b);
     } else {
         let d = b.clone() * b.clone() - Rational::from((4, 1)) * a.clone() * c.clone();
-        println!("  taking sqrt of {}: {}", d, sqrt(&d));
         if d > 0.0 {
             ret.push((-b.clone() + sqrt(&d)) / (Rational::from((2, 1)) * a.clone()));
             ret.push((-b.clone() - sqrt(&d)) / (Rational::from((2, 1)) * a.clone()));
@@ -154,11 +153,6 @@ impl QEq {
             );
         }
         assert!((lx != 0.0) | (ly != 0.0) | (l0 != 0.0));
-        println!("   lin eq: {}x + {}y + {} = 0", lx, ly, l0);
-        println!(
-            "   qua eq: {}xy + {}x + {}y + {} = 0",
-            qeq.axy, qeq.ax, qeq.ay, qeq.a0
-        );
         if lx == 0.0 {
             let mgf = -l0 / ly;
             return vec![(
@@ -253,30 +247,29 @@ fn prob1(
 fn get_magic_point(input: Vec<&str>) -> Vec<PointVel> {
     let pvs = parse_input(input);
     assert!(pvs.len() >= 4);
-    let qeq1 = QEq::from_three_pvs(&pvs[0], &pvs[1], &pvs[2]);
-    let qeq2 = QEq::from_three_pvs(&pvs[0], &pvs[1], &pvs[3]);
-    // let qeq1 = QEq::from_three_pvs(&pvs[10], &pvs[11], &pvs[12]);
-    // let qeq2 = QEq::from_three_pvs(&pvs[10], &pvs[11], &pvs[13]);
-    println!("qeq1: {:?}, qeq2: {:?}", qeq1, qeq2);
-    let l0l1 = qeq1.solve_with(&qeq2);
-    println!("{:?}", l0l1);
+
     let mut ret: Vec<PointVel> = Vec::new();
-    for (t0, t1) in l0l1.iter() {
-        let p0 = pvs[0].clone().at_time(t0.clone());
-        let p1 = pvs[1].clone().at_time(t1.clone());
-        println!("   p0: {:?}, p1: {:?}", p0, p1);
-        let t1t0inv = (t1.clone() - t0.clone()).recip();
-        let vel = &(&p1 - &p0) * &t1t0inv;
-        let pos = &p0 - &(&vel * &t0);
-        println!("   vel: {:?}, pos: {:?}", vel, pos);
-        ret.push(PointVel {
-            px: pos.x,
-            py: pos.y,
-            pz: pos.z,
-            vx: vel.x,
-            vy: vel.y,
-            vz: vel.z,
-        })
+    for s in 0..4 {
+        // let qeq1 = QEq::from_three_pvs(&pvs[0], &pvs[1], &pvs[2]);
+        // let qeq2 = QEq::from_three_pvs(&pvs[0], &pvs[1], &pvs[3]);
+        let qeq1 = QEq::from_three_pvs(&pvs[s], &pvs[s + 1], &pvs[s + 2]);
+        let qeq2 = QEq::from_three_pvs(&pvs[s], &pvs[s + 1], &pvs[s + 3]);
+        let l0l1 = qeq1.solve_with(&qeq2);
+        for (t0, t1) in l0l1.iter() {
+            let p0 = pvs[s].clone().at_time(t0.clone());
+            let p1 = pvs[s + 1].clone().at_time(t1.clone());
+            let t1t0inv = (t1.clone() - t0.clone()).recip();
+            let vel = &(&p1 - &p0) * &t1t0inv;
+            let pos = &p0 - &(&vel * &t0);
+            ret.push(PointVel {
+                px: pos.x,
+                py: pos.y,
+                pz: pos.z,
+                vx: vel.x,
+                vy: vel.y,
+                vz: vel.z,
+            })
+        }
     }
     ret
 }
@@ -285,7 +278,7 @@ fn prob2(input: Vec<&str>) -> Vec<Rational> {
     let mps = get_magic_point(input);
     for magic_point in mps.iter() {
         println!(
-            "mp: {:?}, sum: {}",
+            "  -> mp: {:?}, sum: {}",
             magic_point,
             magic_point.clone().px + magic_point.clone().py + magic_point.clone().pz
         );
@@ -323,7 +316,7 @@ pub fn main() {
 mod tests {
     use rug::Rational;
 
-    use crate::day_24::{parse_input, prob1, prob2, Vect};
+    use crate::day_24::{parse_input, prob1, prob2, sqrt, Vect};
 
     fn example() -> Vec<&'static str> {
         vec![
@@ -363,5 +356,12 @@ mod tests {
     fn test_prob2() {
         let ret = prob2(example());
         assert_eq!(ret, vec![47.0]);
+    }
+
+    #[test]
+    fn test_sqrt() {
+        let a = Rational::from((974327, 29771));
+        let aa = a.clone() * a.clone();
+        assert_eq!(a, sqrt(&aa));
     }
 }
