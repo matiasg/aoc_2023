@@ -1,11 +1,13 @@
 use std::env;
 
+use with_rust::day_10;
 use with_rust::day_24;
 use with_rust::day_4;
 use with_rust::day_5;
 use with_rust::day_6;
 use with_rust::day_7;
 use with_rust::day_8;
+use with_rust::day_9;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -15,6 +17,8 @@ fn main() {
         "6" => day_6::main(),
         "7" => day_7::main(),
         "8" => day_8::main(),
+        "9" => day_9::main(),
+        "10" => day_10::main(),
         "24" => day_24::main(),
         _ => println!("no tengo eso"),
     }
