@@ -21,20 +21,20 @@ fn prob1(input: Vec<&str>) -> u32 {
 }
 
 fn is_enclosed(input: &Vec<(usize, usize)>, y: usize, x: usize) -> bool {
-    let mut integral = 0f32;
+    let mut integral = 0f64;
     for ((ay, ax), (by, bx)) in input.iter().zip(input[1..].iter()) {
         if (ay, ax) == (&y, &x) {
             return false;
         }
-        let a_xy = ((*ay as f32 - y as f32), (*ax as f32 - x as f32));
+        let a_xy = ((*ay as f64 - y as f64), (*ax as f64 - x as f64));
         let a_xy_norm = (a_xy.0 * a_xy.0 + a_xy.1 * a_xy.1).sqrt();
-        let b_xy = ((*by as f32 - y as f32), (*bx as f32 - x as f32));
+        let b_xy = ((*by as f64 - y as f64), (*bx as f64 - x as f64));
         let b_xy_norm = (b_xy.0 * b_xy.0 + b_xy.1 * b_xy.1).sqrt();
 
         let anglediff = ((a_xy.0 * b_xy.1 - a_xy.1 * b_xy.0) / (a_xy_norm * b_xy_norm)).asin();
         integral += anglediff;
     }
-    integral.abs() > 1f32
+    integral.abs() > 1f64
 }
 
 fn prob2(input: Vec<&str>) -> usize {
