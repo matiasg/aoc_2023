@@ -1,5 +1,5 @@
 use regex::Regex;
-use rug::{Float, Rational};
+use rug::Rational;
 use std::{
     fs,
     ops::{Add, Div, Mul, Sub},
