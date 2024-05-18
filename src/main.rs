@@ -2,6 +2,7 @@ use std::env;
 
 use with_rust::day_10;
 use with_rust::day_11;
+use with_rust::day_12;
 use with_rust::day_24;
 use with_rust::day_4;
 use with_rust::day_5;
@@ -21,6 +22,7 @@ fn main() {
         "9" => day_9::main(),
         "10" => day_10::main(),
         "11" => day_11::main(),
+        "12" => day_12::main(),
         "24" => day_24::main(),
         _ => println!("no tengo eso"),
     }
