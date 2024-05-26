@@ -189,21 +189,6 @@ mod tests {
         ]
     }
 
-    fn rotated_example() -> Vec<&'static str> {
-        vec![
-            ".....#....",
-            "....#...O#",
-            "...OO##...",
-            ".OO#......",
-            ".....OOO#.",
-            ".O#...O#.#",
-            "....O#....",
-            "......OOOO",
-            "#...O###..",
-            "#..OO#....",
-        ]
-    }
-
     #[test]
     fn test_count_column() {
         let e = example();
