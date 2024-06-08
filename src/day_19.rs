@@ -215,7 +215,8 @@ fn get_split(input: &[&str]) -> usize {
 
 fn prob2(input: &[&'static str]) -> u64 {
     let split = get_split(input);
-    let insset = InstructionSet::from(&input[0..split]);
+    let mut insset = InstructionSet::from(&input[0..split]);
+    insset.clean();
     let graph = Graph::from(&insset);
     println!("end constructing graph with {} nodes", graph.len());
     let all_paths = graph.paths_between("in", "ACCEPT", &insset, 4000);
@@ -254,23 +255,19 @@ fn prob2(input: &[&'static str]) -> u64 {
     result
 }
 
-fn cuts_size(x: (&u64, &u64), m: (&u64, &u64), a: (&u64, &u64), s: (&u64, &u64)) -> u64 {
-    (x.1 - x.0) * (m.1 - m.0) * (a.1 - a.0) * (s.1 - s.0)
-}
-
 pub fn main() {
     let input: Vec<&str> = include_str!("../day_19_input").trim().split("\n").collect();
     println!("prob1: {}", prob1(input.as_slice()));
     println!("prob2: {}", prob2(input.as_slice()));
 }
 
-mod graph {
+pub mod graph {
     use std::collections::HashMap;
 
     use super::{Continuation, Instruction, InstructionSet, Instructions};
 
     #[derive(Debug)]
-    pub(super) struct Graph {
+    pub struct Graph {
         nodes: Vec<&'static str>,
         edges: Vec<Vec<(usize, usize)>>,
     }
@@ -309,27 +306,9 @@ mod graph {
         pub(super) fn len(&self) -> usize {
             self.nodes.len()
         }
-        pub(super) fn edges_from(&self, node: &str) -> Vec<(usize, usize)> {
-            self.nodes
-                .iter()
-                .zip(self.edges.iter())
-                .filter(|(&n, _)| n == node)
-                .map(|(_, es)| es)
-                .next()
-                .unwrap()
-                .clone()
-        }
-        pub(super) fn edges_from_labels(&self, node: &str) -> Vec<(&str, usize)> {
-            self.edges_from(node)
-                .iter()
-                .map(|&(n, idx)| (self.nodes[n], idx))
-                .collect()
-        }
-
         fn idx_of(&self, node: &str) -> usize {
             self.nodes.iter().position(|&n| n == node).unwrap()
         }
-
         pub(super) fn paths_between(
             &self,
             start: &str,
@@ -380,31 +359,7 @@ mod graph {
             }
             result
         }
-        pub(super) fn number_of_paths_between(&self, start: &str, end: &str) -> u64 {
-            let start = self.idx_of(start);
-            let end = self.idx_of(end);
-            let mut visited: Vec<(usize, u64)> = vec![(start, 1u64)];
-            let mut result = 0u64;
-            while let Some((node, times)) = visited.pop() {
-                for &(after, _) in self.edges[node].iter() {
-                    if after == end {
-                        result += times
-                    } else {
-                        match visited
-                            .iter()
-                            .enumerate()
-                            .filter(|(_, &(n, _))| n == after)
-                            .next()
-                        {
-                            Some((pos, &(n, ntimes))) => visited[pos] = (n, times + ntimes),
-                            None => visited.push((after, times)),
-                        }
-                    }
-                }
-            }
-            result
-        }
-        pub(crate) fn cases(instructions: &Vec<Instruction>) -> u64 {
+        pub(super) fn cases(instructions: &Vec<Instruction>) -> u64 {
             let mut result = 1u64;
             for box_ in 0..4 {
                 let mut min_val = 1u64;
@@ -422,8 +377,7 @@ mod graph {
             }
             result
         }
-
-        pub(crate) fn all_cases(insvec: &Vec<Vec<Instruction>>) -> u64 {
+        pub(super) fn all_cases(insvec: &Vec<Vec<Instruction>>) -> u64 {
             insvec.iter().map(Graph::cases).sum()
         }
     }
@@ -432,7 +386,7 @@ mod graph {
 #[cfg(test)]
 mod tests {
     use super::graph::Graph;
-    use crate::day_19::{prob1, prob2, Continuation, InstructionSet, Instructions, State};
+    use super::{prob1, prob2, Continuation, InstructionSet, Instructions, State};
 
     fn example() -> Vec<&'static str> {
         vec![
@@ -521,31 +475,6 @@ mod tests {
         assert_eq!(paths.len(), 9);
         let cases = Graph::all_cases(&paths);
         assert_eq!(cases, 167409079868000);
-    }
-
-    #[test]
-    fn test_graph() {
-        let insset = InstructionSet::from(&example()[0..11]);
-        let graph = Graph::from(&insset);
-        assert_eq!(graph.len(), 13);
-        assert_eq!(graph.edges_from("crn").len(), 2);
-        assert!(graph.edges_from_labels("hdj").contains(&("ACCEPT", 0)));
-        assert!(graph.edges_from_labels("hdj").contains(&("pv", 1)));
-    }
-
-    #[test]
-    fn test_paths() {
-        let inst: Vec<&str> = vec!["in{a<1:b,x<3:c,A}", "b{a>1:R,x>0:c,R}", "c{m>1:A,R}"];
-        let insset = InstructionSet::from(inst.as_slice());
-        let graph = Graph::from(&insset);
-        assert_eq!(graph.number_of_paths_between("in", "ACCEPT"), 3);
-        assert_eq!(graph.number_of_paths_between("in", "REJECT"), 4);
-
-        let insset = InstructionSet::from(&example()[0..11]);
-        let graph = Graph::from(&insset);
-        assert_eq!(graph.number_of_paths_between("hdj", "ACCEPT"), 2);
-        assert_eq!(graph.number_of_paths_between("qqz", "ACCEPT"), 5);
-        assert_eq!(graph.number_of_paths_between("in", "ACCEPT"), 5 + 4);
     }
 
     #[test]
