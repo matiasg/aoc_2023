@@ -1,4 +1,5 @@
 use itertools::iproduct;
+use std::cmp::Reverse;
 use std::{
     collections::{BinaryHeap, HashMap, HashSet},
     fmt::Debug,
@@ -113,10 +114,10 @@ where
         let aidx = self.node_idx(&a);
         let bidx = self.node_idx(&b);
         let mut visited: Vec<bool> = vec![false; self.len()];
-        let mut to_visit: BinaryHeap<(usize, usize)> = BinaryHeap::new();
+        let mut to_visit: BinaryHeap<(Reverse<usize>, usize)> = BinaryHeap::new();
         visited[aidx] = true;
-        to_visit.push((0, aidx));
-        while let Some((dist, node)) = to_visit.pop() {
+        to_visit.push((Reverse(0), aidx));
+        while let Some((Reverse(dist), node)) = to_visit.pop() {
             let next_dist = dist + 1;
             for next in self.edges_from_idxs(node) {
                 if visited[next] {
@@ -126,10 +127,43 @@ where
                     return Some(next_dist);
                 }
                 visited[next] = true;
-                to_visit.push((next_dist, next));
+                to_visit.push((Reverse(next_dist), next));
             }
         }
         None
+    }
+    /// Dijkstra algorithm for (maybe) more than one target
+    pub fn distances_between(&self, a: N, b: &Vec<N>) -> Vec<Option<usize>> {
+        let aidx = self.node_idx(&a);
+        let idx_to_b: HashMap<usize, usize> = b
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (self.node_idx(n), i))
+            .collect();
+        let mut result: Vec<Option<usize>> = vec![None; b.len()];
+        let mut visited: Vec<bool> = vec![false; self.len()];
+        let mut to_visit: BinaryHeap<(Reverse<usize>, usize)> = BinaryHeap::new();
+        visited[aidx] = true;
+        to_visit.push((Reverse(0), aidx));
+        if let Some(&pos) = idx_to_b.get(&aidx) {
+            result[pos] = Some(0);
+        }
+        while let Some((Reverse(dist), node)) = to_visit.pop() {
+            let next_dist = dist + 1;
+            for next in self.edges_from_idxs(node) {
+                if visited[next] {
+                    continue;
+                }
+                if let Some(&pos) = idx_to_b.get(&next) {
+                    if result[pos].is_none() {
+                        result[pos] = Some(next_dist);
+                    }
+                }
+                visited[next] = true;
+                to_visit.push((Reverse(next_dist), next));
+            }
+        }
+        result
     }
     pub fn there_is_a_path_between(&self, a: N, b: N) -> bool {
         self.distance_between(a, b).is_some()
@@ -333,5 +367,7 @@ mod test {
         assert_eq!(distances[3][0], usize::MAX);
         assert_eq!(distances[0][1], 1);
         assert_eq!(distances[1][3], 1);
+        let distances = g.distances_between(&"b", &vec![&"a", &"d"]);
+        assert_eq!(distances, vec![None, Some(1)]);
     }
 }
