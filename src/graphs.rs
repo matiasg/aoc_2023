@@ -10,6 +10,7 @@ pub struct Graph<N> {
     pub nodes: Vec<N>,
     pub edges: HashMap<usize, Vec<usize>>,
 }
+
 impl<N> Graph<N>
 where
     N: Eq + PartialEq + Copy,
@@ -168,6 +169,8 @@ where
     pub fn there_is_a_path_between(&self, a: N, b: N) -> bool {
         self.distance_between(a, b).is_some()
     }
+    /// Floyd-Warshall algorithm.
+    /// It's O(n^3) where n = #nodes
     pub fn all_distances(&self) -> Vec<Vec<usize>> {
         let mut result = vec![vec![usize::MAX; self.len()]; self.len()];
         for (from, tos) in self.edges.iter() {
@@ -203,6 +206,46 @@ where
             .flatten()
             .collect();
         s.clone().into_iter().collect()
+    }
+}
+impl Graph<(usize, usize)> {
+    pub fn from_maze(input: &Vec<&str>, floor: &str, wall: char) -> Self {
+        let width = input[0].len();
+        assert!(
+            input.iter().all(|s| s.len() == width),
+            "all lines of `input` should have the same length"
+        );
+        let height = input.len();
+        let nodes: Vec<(usize, usize)> = iproduct!(0..height, 0..width)
+            .filter(|(y, x)| {
+                floor
+                    .chars()
+                    .any(|c| c == input[*y].chars().nth(*x).unwrap())
+            })
+            .collect();
+        let idx_nodes: HashMap<(usize, usize), usize> =
+            nodes.iter().enumerate().map(|(i, &xy)| (xy, i)).collect();
+        let mut edges: HashMap<usize, Vec<usize>> = HashMap::new();
+        for (i, &(y, x)) in nodes.iter().enumerate() {
+            let mut i_edges: Vec<usize> = vec![];
+            if x > 0 && input[y].chars().nth(x - 1).unwrap() != wall {
+                i_edges.push(idx_nodes[&(y, x - 1)]);
+            }
+            if x < width - 1 && input[y].chars().nth(x + 1).unwrap() != wall {
+                i_edges.push(idx_nodes[&(y, x + 1)]);
+            }
+            if y > 0 && input[y - 1].chars().nth(x).unwrap() != wall {
+                i_edges.push(idx_nodes[&(y - 1, x)]);
+            }
+            if y < height - 1 && input[y + 1].chars().nth(x).unwrap() != wall {
+                i_edges.push(idx_nodes[&(y + 1, x)]);
+            }
+            if !i_edges.is_empty() {
+                edges.insert(i, i_edges);
+            }
+        }
+
+        Graph { nodes, edges }
     }
 }
 
@@ -369,5 +412,43 @@ mod test {
         assert_eq!(distances[1][3], 1);
         let distances = g.distances_between(&"b", &vec![&"a", &"d"]);
         assert_eq!(distances, vec![None, Some(1)]);
+
+        let maze: Vec<&str> = vec!["...", ".#.", "..."];
+        let graph = Graph::from_maze(&maze, &".", '#');
+        assert_eq!(graph.distance_between((0, 0), (0, 2)), Some(2));
+        let distances = graph.distances_between(
+            (0, 0),
+            &vec![(0, 0), (1, 0), (0, 1), (0, 2), (2, 0), (2, 1), (2, 2)],
+        );
+        assert_eq!(
+            distances,
+            vec![
+                Some(0),
+                Some(1),
+                Some(1),
+                Some(2),
+                Some(2),
+                Some(3),
+                Some(4),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_from_maze() {
+        let maze: Vec<&str> = vec!["..#.", ".###", "...."];
+        let graph = Graph::from_maze(&maze, &".", '#');
+        assert_eq!(graph.len(), 8);
+        assert_eq!(graph.edges.len(), 7);
+        let edges_starts: HashSet<usize> = graph.edges.keys().map(|&n| n).collect();
+        let expected_edges_start: Vec<(usize, usize)> =
+            vec![(0, 0), (0, 1), (1, 0), (2, 0), (2, 1), (2, 2), (2, 3)];
+        let expected_edges_start_idx: HashSet<usize> = expected_edges_start
+            .iter()
+            .map(|n| graph.node_idx(n))
+            .collect();
+        assert_eq!(edges_starts, expected_edges_start_idx);
+        let distances = graph.distances_between((0, 0), &vec![(0, 0), (1, 0), (2, 3), (0, 3)]);
+        assert_eq!(distances, vec![Some(0), Some(1), Some(5), None]);
     }
 }
