@@ -96,7 +96,7 @@ pub fn main() {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::day_18::{convert_to_vectors, prob1, prob2};
 
     fn example() -> Vec<&'static str> {
