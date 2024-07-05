@@ -6,6 +6,7 @@ use std::{
     hash::Hash,
 };
 
+#[derive(Debug)]
 pub struct Graph<N> {
     pub nodes: Vec<N>,
     pub edges: HashMap<usize, Vec<usize>>,
@@ -32,6 +33,9 @@ where
     pub fn add_edge(&mut self, a: N, b: N) {
         let pa = self.node_idx(&a);
         let pb = self.node_idx(&b);
+        self.add_edge_with_idxs(pa, pb);
+    }
+    pub fn add_edge_with_idxs(&mut self, pa: usize, pb: usize) {
         let ea = self.edges.get_mut(&pa).unwrap();
         match ea.iter().enumerate().find(|(_, pc)| **pc == pb) {
             Some((i, _)) => ea[i] = pb,
