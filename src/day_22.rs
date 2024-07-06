@@ -1,8 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use crate::graphs::Graph;
-
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 struct Brick {
     start: (i32, i32, i32),
@@ -52,43 +50,6 @@ impl Brick {
         }
         other.end.2 < self.start.2
     }
-}
-
-/// Note: assumes input `bricks` are sorted by z
-fn bricks_graph(bricks: &Vec<Brick>) -> Graph<&Brick> {
-    let mut g = Graph::new_with_nodes(bricks);
-    for (i, &bi) in bricks.iter().enumerate() {
-        for (i_plus_1_to_j, &bj) in bricks.get(i + 1..).unwrap().iter().enumerate() {
-            if bj.depends_on(&bi) {
-                g.add_edge_with_idxs(i, i + 1 + i_plus_1_to_j);
-            }
-        }
-    }
-    g
-}
-
-fn transitively_close<N>(graph: &mut Graph<N>) -> Vec<Vec<usize>>
-where
-    N: Copy + Eq,
-{
-    let mut max_dists: Vec<Vec<usize>> = vec![vec![0; graph.len()]; graph.len()];
-    for from in 0..graph.len() {
-        for &to in graph.edges.get(&from).unwrap().iter() {
-            max_dists[from][to] = 1
-        }
-    }
-    for mid in 0..graph.len() {
-        for low in 0..mid {
-            let edges_mid = graph.edges.get(&mid).unwrap().clone();
-            for &top in edges_mid.iter() {
-                let path_through_mid = max_dists[low][mid] + max_dists[mid][top];
-                max_dists[low][top] = max_dists[low][top].max(path_through_mid);
-                graph.add_edge_with_idxs(low, top);
-            }
-        }
-    }
-
-    max_dists
 }
 
 fn prob2(input: &Vec<&str>) -> usize {
@@ -208,7 +169,7 @@ mod tests {
 
     use crate::graphs::Graph;
 
-    use super::{bricks_graph, fallen_bricks, prob1, prob2, transitively_close, Brick};
+    use super::{fallen_bricks, prob1, prob2, Brick};
 
     fn example() -> Vec<&'static str> {
         vec![
@@ -220,6 +181,42 @@ mod tests {
             "0,1,6~2,1,6",
             "1,1,8~1,1,9",
         ]
+    }
+
+    fn bricks_graph(bricks: &Vec<Brick>) -> Graph<&Brick> {
+        let mut g = Graph::new_with_nodes(bricks);
+        for (i, &bi) in bricks.iter().enumerate() {
+            for (i_plus_1_to_j, &bj) in bricks.get(i + 1..).unwrap().iter().enumerate() {
+                if bj.depends_on(&bi) {
+                    g.add_edge_with_idxs(i, i + 1 + i_plus_1_to_j);
+                }
+            }
+        }
+        g
+    }
+
+    fn transitively_close<N>(graph: &mut Graph<N>) -> Vec<Vec<usize>>
+    where
+        N: Copy + Eq,
+    {
+        let mut max_dists: Vec<Vec<usize>> = vec![vec![0; graph.len()]; graph.len()];
+        for from in 0..graph.len() {
+            for &to in graph.edges.get(&from).unwrap().iter() {
+                max_dists[from][to] = 1
+            }
+        }
+        for mid in 0..graph.len() {
+            for low in 0..mid {
+                let edges_mid = graph.edges.get(&mid).unwrap().clone();
+                for &top in edges_mid.iter() {
+                    let path_through_mid = max_dists[low][mid] + max_dists[mid][top];
+                    max_dists[low][top] = max_dists[low][top].max(path_through_mid);
+                    graph.add_edge_with_idxs(low, top);
+                }
+            }
+        }
+
+        max_dists
     }
 
     #[test]
