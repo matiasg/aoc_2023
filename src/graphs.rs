@@ -198,6 +198,44 @@ where
         }
         result
     }
+    /// BFS from a to b
+    /// The paths are taken care to no repeat nodes. The ids of the nodes are returned
+    /// NOTE: also, paths that end in a leaf (or in a vertex from where there are no edges to unvisited nodes) are returned.
+    pub fn bfs_acyclic_paths(&self, a: N, b: N) -> Vec<Vec<usize>> {
+        let ia = self.node_idx(&a);
+        let ib = self.node_idx(&b);
+        let mut result = vec![];
+        let mut considering: Vec<Vec<usize>> = vec![vec![ia]];
+        while let Some(path) = considering.pop() {
+            let last = *path.last().unwrap();
+            let next_idxs = self.edges_from_idxs(last);
+            if next_idxs.is_empty() {
+                result.push(path);
+            } else {
+                for next in next_idxs {
+                    if path.contains(&next) {
+                        continue;
+                    }
+                    if next == ib {
+                        result.push(
+                            path.clone()
+                                .into_iter()
+                                .chain(std::iter::once(next))
+                                .collect(),
+                        );
+                    } else {
+                        considering.push(
+                            path.clone()
+                                .into_iter()
+                                .chain(std::iter::once(next))
+                                .collect(),
+                        );
+                    }
+                }
+            }
+        }
+        result
+    }
 }
 impl<N> Graph<N>
 where
@@ -454,5 +492,24 @@ mod test {
         assert_eq!(edges_starts, expected_edges_start_idx);
         let distances = graph.distances_between((0, 0), &vec![(0, 0), (1, 0), (2, 3), (0, 3)]);
         assert_eq!(distances, vec![Some(0), Some(1), Some(5), None]);
+    }
+
+    #[test]
+    fn test_bfs() {
+        let maze: Vec<&str> = vec!["...", ".#.", "..."];
+        let graph = Graph::from_maze(&maze, &".", '#');
+        let paths = graph.bfs_acyclic_paths((0, 0), (2, 0));
+        assert_eq!(paths.len(), 2);
+        let expected: HashSet<Vec<usize>> = HashSet::from_iter([
+            [(0, 0), (1, 0), (2, 0)]
+                .iter()
+                .map(|n| graph.node_idx(n))
+                .collect(),
+            [(0, 0), (0, 1), (0, 2), (1, 2), (2, 2), (2, 1), (2, 0)]
+                .iter()
+                .map(|n| graph.node_idx(n))
+                .collect(),
+        ]);
+        assert_eq!(HashSet::from_iter(paths.clone()), expected);
     }
 }
