@@ -310,7 +310,7 @@ where
     pub fn add_node(&mut self, node: N) {
         self.graph.add_node(node);
     }
-    fn node_idx(&self, node: &N) -> usize {
+    pub fn node_idx(&self, node: &N) -> usize {
         self.graph.node_idx(node)
     }
     pub fn add_edge(&mut self, a: N, b: N, label: E) {
