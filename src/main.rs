@@ -14,6 +14,7 @@ use with_rust::day_19;
 use with_rust::day_20;
 use with_rust::day_21;
 use with_rust::day_22;
+use with_rust::day_23;
 use with_rust::day_24;
 use with_rust::day_4;
 use with_rust::day_5;
@@ -45,6 +46,7 @@ fn main() {
         "20" => day_20::main(),
         "21" => day_21::main(),
         "22" => day_22::main(),
+        "23" => day_23::main(),
         "24" => day_24::main(),
         _ => println!("no tengo eso"),
     }

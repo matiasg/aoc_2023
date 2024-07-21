@@ -321,6 +321,9 @@ where
     }
     pub fn edges_from(&self, node: &N) -> Vec<(N, E)> {
         let pn = self.node_idx(node);
+        self.edges_from_idxs(pn)
+    }
+    pub fn edges_from_idxs(&self, pn: usize) -> Vec<(N, E)> {
         self.graph
             .edges
             .get(&pn)

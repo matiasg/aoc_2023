@@ -7,7 +7,7 @@ fn dist(a: &(isize, isize), b: &(isize, isize)) -> isize {
     (a.0 - b.0).abs() + (a.1 - b.1).abs()
 }
 
-fn make_graph(input: &Vec<&str>, any_direction: bool) -> Graph<(isize, isize)> {
+fn make_graph(input: &[&str], any_direction: bool) -> Graph<(isize, isize)> {
     let dots: Vec<(isize, isize)> = input
         .iter()
         .enumerate()
@@ -67,18 +67,19 @@ fn prob1(input: &[&str]) -> usize {
         - 1 // start does not count
 }
 
-fn contract(graph: &Graph<(isize, isize)>) -> DecoratedGraph<(isize, isize), usize> {
+fn contract(graph: &Graph<(isize, isize)>) -> DecoratedGraph<Pt, usize> {
     let decision_vertices: Vec<(isize, isize)> = graph
         .nodes
         .iter()
         .filter(|&n| graph.edges_from(n).len() != 2)
-        .map(|&n| n)
+        .copied()
         .collect();
-    let mut result: DecoratedGraph<(isize, isize), usize> =
-        DecoratedGraph::new_with_nodes(decision_vertices.clone());
+    let mut result: DecoratedGraph<Pt, usize> =
+        DecoratedGraph::new_with_nodes(decision_vertices.iter().map(|&(y, x)| Pt(y, x)));
+    // DecoratedGraph::new_with_nodes(decision_vertices.clone());
     let mut interior_vertices: BTreeSet<(isize, isize)> =
-        &BTreeSet::from_iter(graph.nodes.iter().map(|&n| n))
-            - &BTreeSet::from_iter(decision_vertices.iter().map(|&n| n));
+        &BTreeSet::from_iter(graph.nodes.iter().copied())
+            - &BTreeSet::from_iter(decision_vertices.iter().copied());
     while let Some(v) = interior_vertices.pop_first() {
         let mut path_ends: Vec<(isize, isize)> = vec![];
         let mut to_remove: BTreeSet<(isize, isize)> = BTreeSet::from([v]);
@@ -89,8 +90,7 @@ fn contract(graph: &Graph<(isize, isize)>) -> DecoratedGraph<(isize, isize), usi
                 x = *graph
                     .edges_from(&x)
                     .iter()
-                    .filter(|&y| !to_remove.contains(y))
-                    .next()
+                    .find(|&y| !to_remove.contains(y))
                     .unwrap();
             }
             path_ends.push(x);
@@ -98,76 +98,61 @@ fn contract(graph: &Graph<(isize, isize)>) -> DecoratedGraph<(isize, isize), usi
         let v1 = path_ends[0];
         let v2 = path_ends[1];
         let d = to_remove.len() + 1;
-        result.add_edge(v1, v2, d);
-        result.add_edge(v2, v1, d);
+        result.add_edge(Pt::from(v1), Pt::from(v2), d);
+        result.add_edge(Pt::from(v2), Pt::from(v1), d);
         interior_vertices = &interior_vertices - &to_remove;
     }
     result
 }
 
-fn max_distances<N>(graph: &DecoratedGraph<N, usize>) -> Vec<Vec<usize>>
-where
-    N: Debug + Copy + Eq,
-{
-    let mut max_dists: Vec<Vec<usize>> = vec![vec![0; graph.len()]; graph.len()];
-    for (&(from, to), &d) in graph.labels.iter() {
-        max_dists[from][to] = d;
-    }
-    for vmid in 0..graph.len() {
-        for vstart in 0..graph.len() {
-            for vend in 0..graph.len() {
-                let path_through_mid = max_dists[vstart][vmid] + max_dists[vmid][vend];
-                max_dists[vstart][vend] = max_dists[vstart][vend].max(path_through_mid);
-            }
-        }
-    }
+#[derive(Eq, PartialEq, Debug, Clone, Copy)]
+struct Pt(isize, isize);
 
-    max_dists
+impl Pt {
+    fn from(yx: (isize, isize)) -> Pt {
+        Pt(yx.0, yx.1)
+    }
 }
 
-fn path_with_highest_sum(
-    graph: DecoratedGraph<(isize, isize), usize>,
-    a: (isize, isize),
-    b: (isize, isize),
-) -> usize {
+fn path_with_highest_sum(graph: DecoratedGraph<Pt, usize>, a: Pt, b: Pt) -> usize {
     let ia = graph.node_idx(&a);
-    let ib = graph.node_idx(&b);
     let mut result: Vec<Vec<usize>> = vec![];
-    let mut considering: Vec<Vec<usize>> = vec![vec![ia]];
-    while let Some(path) = considering.pop() {
-        let last = *path.last().unwrap();
-        let next_idxs = graph.edges_from_idxs(last);
-        if next_idxs.is_empty() {
-            result.push(path);
+    let mut considering: Vec<Vec<(usize, usize)>> = vec![vec![(ia, 0)]];
+    while let Some(path_weights) = considering.pop() {
+        let (last, _) = *path_weights.last().unwrap();
+        let next_pts_weights = graph.edges_from_idxs(last);
+        if next_pts_weights.is_empty() {
+            result.push(path_weights.iter().map(|&(_, w)| w).collect());
         } else {
-            for next in next_idxs {
-                if path.contains(&next) {
+            for (next_pt, weight) in next_pts_weights {
+                let next_idx = graph.node_idx(&next_pt);
+                if path_weights
+                    .iter()
+                    .map(|&(n, _)| n)
+                    .collect::<Vec<usize>>()
+                    .contains(&next_idx)
+                {
                     continue;
                 }
-                if next == ib {
-                    result.push(
-                        path.clone()
-                            .into_iter()
-                            .chain(std::iter::once(next))
-                            .collect(),
-                    );
+                let path_with_next: Vec<(usize, usize)> = path_weights
+                    .clone()
+                    .into_iter()
+                    .chain(std::iter::once((next_idx, weight)))
+                    .collect();
+                if next_pt == b {
+                    result.push(path_with_next.into_iter().map(|(_, w)| w).collect());
                 } else {
-                    considering.push(
-                        path.clone()
-                            .into_iter()
-                            .chain(std::iter::once(next))
-                            .collect(),
-                    );
+                    considering.push(path_with_next);
                 }
             }
         }
     }
-    result.iter().max().unwrap()
+    result.iter().map(|ws| ws.iter().sum()).max().unwrap()
 }
 
 fn prob2(input: &[&str]) -> usize {
-    let start = (0isize, 1isize);
-    let end = (input.len() as isize - 1, input[0].len() as isize - 2);
+    let start = Pt(0isize, 1isize);
+    let end = Pt(input.len() as isize - 1, input[0].len() as isize - 2);
     let input = Vec::from(input);
     let graph = make_graph(&input, true);
     let contracted = contract(&graph);
@@ -176,8 +161,7 @@ fn prob2(input: &[&str]) -> usize {
         graph.len(),
         contracted.len()
     );
-    let maxdists = max_distances(&contracted);
-    maxdists[contracted.node_idx(&start)][contracted.node_idx(&end)]
+    path_with_highest_sum(contracted, start, end)
 }
 
 pub fn main() {
@@ -188,7 +172,7 @@ pub fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{contract, make_graph, prob1, prob2};
+    use super::{contract, make_graph, prob1, prob2, Pt};
 
     fn example() -> Vec<&'static str> {
         vec![
@@ -244,7 +228,7 @@ mod tests {
         assert_eq!(gc.len(), 9);
         let start = (0, 1);
         let v2 = (5, 3);
-        assert_eq!(gc.edges_from(&start), vec![(v2, 15)]);
-        assert_eq!(gc.edges_from(&v2).len(), 3);
+        assert_eq!(gc.edges_from(&Pt::from(start)), vec![(Pt::from(v2), 15)]);
+        assert_eq!(gc.edges_from(&Pt::from(v2)).len(), 3);
     }
 }
