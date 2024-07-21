@@ -4,10 +4,10 @@ use std::{
     fs,
 };
 
-fn make_map<'a>(input: &'a Vec<&'a str>) -> HashMap<&'a str, (&'a str, &'a str)> {
+fn make_map<'a>(input: &'a [&'a str]) -> HashMap<&'a str, (&'a str, &'a str)> {
     let re = Regex::new(r"([A-Z][A-Z][A-Z]) = \(([A-Z]{3}), ([A-Z]{3})\)").unwrap();
     HashMap::from_iter(input.get(2..).unwrap().iter().map(|l| {
-        let c = re.captures(*l).unwrap();
+        let c = re.captures(l).unwrap();
         (
             c.get(1).unwrap().as_str(),
             (c.get(2).unwrap().as_str(), c.get(3).unwrap().as_str()),
@@ -17,14 +17,14 @@ fn make_map<'a>(input: &'a Vec<&'a str>) -> HashMap<&'a str, (&'a str, &'a str)>
 
 fn step_until<'a>(
     map: &HashMap<&'a str, (&'a str, &'a str)>,
-    instructions: &Vec<u8>,
+    instructions: &[u8],
     start: &'a str,
     start_instruction_idx: usize,
     end_condition: fn(&'a str) -> bool,
     must_make_steps: bool,
 ) -> (usize, &'a str) {
     let mut step: usize = 0;
-    let mut state = start.clone();
+    let mut state = start;
     let stop_step = map.len() * instructions.len() + 1;
     while !end_condition(state) & (step < stop_step) | ((step == 0) & must_make_steps) {
         let i = instructions[(step + start_instruction_idx) % instructions.len()];
@@ -36,29 +36,21 @@ fn step_until<'a>(
 }
 
 fn prob1(input: Vec<&str>) -> usize {
-    let instructions = input.get(0).unwrap().as_bytes();
+    let instructions = input.first().unwrap().as_bytes();
     let map = make_map(&input);
-    step_until(
-        &map,
-        &instructions.to_vec(),
-        "AAA",
-        0,
-        |s| s == "ZZZ",
-        false,
-    )
-    .0
+    step_until(&map, instructions, "AAA", 0, |s| s == "ZZZ", false).0
 }
 
 fn make_graph(
     map: &HashMap<&str, (&str, &str)>,
-    states: &Vec<&str>,
-    instructions: &Vec<u8>,
+    states: &[&str],
+    instructions: &[u8],
 ) -> Vec<Vec<(usize, usize)>> {
     let mut ret: Vec<Vec<(usize, usize)>> = vec![vec![(0, 0); instructions.len()]; states.len()];
     for (i, key) in states.iter().enumerate() {
         for (j, _) in instructions.iter().enumerate() {
             let (steps, end_state) =
-                step_until(&map, &instructions, key, j, |s| s.ends_with("Z"), true);
+                step_until(map, instructions, key, j, |s| s.ends_with('Z'), true);
             let goes_to = states.iter().position(|&s| s == end_state).unwrap_or(i);
             ret[i][j] = (goes_to, steps);
         }
@@ -82,7 +74,7 @@ fn prob2_alt(input: Vec<&str>) -> usize {
         .map(|&s| s.get(..3).unwrap())
         .collect();
     let instructions = input[0].as_bytes().to_vec();
-    let ends_in_z: fn(&str) -> bool = |s| s.ends_with("Z");
+    let ends_in_z: fn(&str) -> bool = |s| s.ends_with('Z');
     let mut states_steps: HashMap<&str, (usize, &str)> = HashMap::new();
     for state in start_states {
         states_steps.insert(
@@ -113,15 +105,11 @@ fn prob2_alt(input: Vec<&str>) -> usize {
 
 fn _prob2(input: Vec<&str>) -> usize {
     // This takes too much time. The answer is ~1e14 and this goes one by one
-    let instructions = input.get(0).unwrap().as_bytes();
+    let instructions = input.first().unwrap().as_bytes();
     let map = make_map(&input);
     let mut step: usize = 0;
-    let mut states: Vec<&str> = map
-        .keys()
-        .filter(|s| s.ends_with("A"))
-        .map(|s| *s)
-        .collect();
-    while !states.iter().all(|s| s.ends_with("Z")) {
+    let mut states: Vec<&str> = map.keys().filter(|s| s.ends_with('A')).copied().collect();
+    while !states.iter().all(|s| s.ends_with('Z')) {
         let i: for<'a> fn((&'a str, &'a str)) -> &'a str =
             if instructions[step % instructions.len()] == b'L' {
                 |s| s.0
@@ -131,7 +119,7 @@ fn _prob2(input: Vec<&str>) -> usize {
         states = states.iter().map(|s| i(*map.get(s).unwrap())).collect();
         step += 1;
         // if step % 1000 == 0 {
-        if states.iter().filter(|s| s.ends_with("Z")).count() > 2 {
+        if states.iter().filter(|s| s.ends_with('Z')).count() > 2 {
             println!(
                 "{}: {:?}",
                 step,
@@ -144,7 +132,7 @@ fn _prob2(input: Vec<&str>) -> usize {
 
 pub fn main() {
     let input = fs::read_to_string("day_8_input").expect("Error reading file");
-    let input: Vec<&str> = input.trim().split("\n").collect();
+    let input: Vec<&str> = input.trim().split('\n').collect();
     let p1 = prob1(input.clone());
     println!("problem 1: {}", p1);
     let p2 = prob2_alt(input);

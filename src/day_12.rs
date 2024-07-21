@@ -1,7 +1,6 @@
 fn numbers_in_line(line: &str) -> Vec<usize> {
     line.split(' ')
-        .skip(1)
-        .next()
+        .nth(1)
         .unwrap()
         .split(',')
         .map(|s| s.parse().unwrap())
@@ -15,7 +14,7 @@ fn places_where_it_would_fit(line: &str, expected: &[usize], wanted: usize) -> V
         expected.get(wanted + 1..).unwrap().iter().sum::<usize>() + expected.len() - wanted - 1;
     let last = line.len() - after - wl;
     (first..=last)
-        .filter(|&i| !line.get(i..(i + wl)).unwrap().contains("."))
+        .filter(|&i| !line.get(i..(i + wl)).unwrap().contains('.'))
         .collect::<Vec<usize>>()
 }
 
@@ -32,10 +31,7 @@ fn one_line_by_middle(line: &str, expected: &[usize]) -> u64 {
             let left: u64 = if (p > 0) && (&line[p - 1..p] == "#") {
                 0u64
             } else {
-                one_line_by_middle(
-                    &line[..p.checked_sub(1).unwrap_or(0)],
-                    &expected[..middle_pos],
-                )
+                one_line_by_middle(&line[..p.saturating_sub(1)], &expected[..middle_pos])
             };
             let right: u64 = if (p + middle_len < line.len())
                 && (&line[p + middle_len..p + middle_len + 1] == "#")
@@ -154,7 +150,7 @@ mod tests {
             .take(times - 1)
             .fold(line.to_string(), |s, x| s + "?" + x);
         let numbers = (0..times).fold(vec![], |mut a, _| {
-            a.extend(ns.clone());
+            a.extend(ns);
             a
         });
         (pad, numbers)
@@ -194,12 +190,9 @@ mod tests {
 
     #[test]
     fn test_places_where_it_would_fit() {
+        assert_eq!(places_where_it_would_fit("???.###", &[1, 1, 3], 0), vec![0]);
         assert_eq!(
-            places_where_it_would_fit("???.###", &vec![1, 1, 3], 0),
-            vec![0]
-        );
-        assert_eq!(
-            places_where_it_would_fit(".??..??...?##", &vec![1, 1, 3], 1),
+            places_where_it_would_fit(".??..??...?##", &[1, 1, 3], 1),
             vec![2, 5, 6]
         );
     }
